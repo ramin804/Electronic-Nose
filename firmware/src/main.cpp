@@ -6,7 +6,8 @@
 //   GND -> GND
 //   SDA -> GPIO 8
 //   SCL -> GPIO 9
-//   ADDR, CS -> leave unconnected
+//   CS   -> 3V3 (forces I2C mode)
+//   ADDR -> leave unconnected
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -38,13 +39,15 @@ void setup() {
   Serial.println("Electronic Nose: sensor test");
 
   Wire.begin(SDA_PIN, SCL_PIN);
-  scanI2C();
 
-  // The BME688 can be at address 0x77 or 0x76 depending on the board. Try both.
-  if (!bme.begin(0x77) && !bme.begin(0x76)) {
-    Serial.println("BME688 not found. Check wiring and the scan results above.");
-    neopixelWrite(RGB_PIN, 20, 0, 0);  // red = error
-    while (true) delay(1000);
+  // Keep scanning until the sensor shows up, so loose wiring can be fixed
+  // without restarting. The BME688 can be at address 0x77 or 0x76.
+  while (true) {
+    scanI2C();
+    if (bme.begin(0x77) || bme.begin(0x76)) break;
+    Serial.println("BME688 not found, retrying in 2 s...");
+    neopixelWrite(RGB_PIN, 20, 0, 0);  // red = sensor not found
+    delay(2000);
   }
   Serial.println("BME688 found");
 
